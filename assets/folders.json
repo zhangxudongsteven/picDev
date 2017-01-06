@@ -1,0 +1,23 @@
+[
+    {
+        "id": "ajufelf2911",
+        "set": "test-set-1",
+        "name": "test-g1",
+        "count": 3
+    }, {
+        "id": "ajufelf2911",
+        "set": "test-set-1",
+        "name": "test-g2",
+        "count": 3
+    }, {
+        "id": "ajufelf2911",
+        "set": "test-set-2",
+        "name": "test-g3",
+        "count": 3
+    }, {
+        "id": "ajufelf2911",
+        "set": "test-set-2",
+        "name": "test-g4",
+        "count": 3
+    }
+]
