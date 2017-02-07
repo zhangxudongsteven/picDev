@@ -20,10 +20,11 @@
                 </ul>
             </div>
         </div>
-    </nav>         
+    </nav>
     <div class="container">
         <div class="row">
-            <div class="col-sm-3"> 
+            <div class="col-sm-3">
+                <div v-if="false"><h4>{{ msg1 }}: "{{ setSelected }}"</h4></div>
                 <div class="btn-group my-bt">
                   <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
                     Sets <span class="caret"></span>
@@ -65,7 +66,7 @@
                 </div>
                 <hr>
                 <div class="list-group" v-for="(item, index) in filterFolders">
-                      <a href="#" class="list-group-item" v-bind:class="{active: item.name == groupSelected}" v-on:click="changeRepo(item.name)">{{item.name}}<span class="badge">{{item.amount}}</span></a>
+                      <a href="#" class="list-group-item" v-bind:class="{active: item.name == groupSelected}" v-on:click="changeRepo(item.name)">{{item.name}}<span class="badge">{{item.count}}</span></a>
                 </div>
             </div>
             <div id="top" class="col-sm-9">
@@ -81,8 +82,8 @@
                     <div class="col-sm-1"></div>
                 </div>
                 <br> 
-                <div v-for="(item, index) in selectedPics">
-                    <img v-bind:src="item.url" alt="image with thumbnail corners" class="img-thumbnail">
+                <div v-for="(item, index) in selectedPicRepo">
+                    <img v-bind:src="item.path" alt="image with thumbnail corners" class="img-thumbnail">
                     <p class="my-pic-lable">{{index + 1}} / {{lengthOfThisFolder}} - {{item.name}}</p>
                 </div>
                 <br>
@@ -103,53 +104,76 @@
 </template>
 
 <script>
-import { dropdown } from 'vue-strap';
-let AV = require("leancloud-storage");
+// var Nanobar = require('nanobar');
     
 export default {
     
   name: 'app',
   components: {
-      dropdown
   },
   data () {
     return {
       msg1: 'Sets',
       msg2: 'Welcome & Enjoy yourself',
-      setInfos: [],
+      picInfos: [],
+      folderInfos: [],
       filterFolders: [],
-      selectedPics: [],
+      setInfos: [],
+      apiUrlPics: './assets/pics_v3.json',
+      apiUrlFolders: './assets/folders_v3.json',
+      apiUrlSets: './assets/sets_v3.json',
       groupSelected: "test-g1",
       setSelected: "",
       initialSet: "test-set-1"
     }
   },
   methods: {
+      getJsonData: function() {
+			this.$http.get(this.apiUrlPics)
+				.then((response) => {
+                    // console.log(response.data);
+                    this.picInfos = response.data
+				})
+				.catch(function(response) {
+					console.log(response)
+				})
+      },
+      getGroupJsonData: function() {
+			this.$http.get(this.apiUrlFolders)
+				.then((response) => {
+                    // console.log(response.data);
+                    this.folderInfos = response.data;
+                    this.changeSet(this.initialSet);
+				})
+				.catch(function(response) {
+					console.log(response)
+				})
+      },
+      getSetJsonData: function() {
+			this.$http.get(this.apiUrlSets)
+				.then((response) => {
+                    // console.log(response.data);
+                    this.setInfos = response.data
+				})
+				.catch(function(response) {
+					console.log(response)
+				})
+      },
       changeRepo: function(repoName) {
-          if (this.groupSelected == repoName) return;
+          // console.log(repoName);
           this.groupSelected = repoName;
-          this.getPics();
       },
       changeSet: function(setName) {
           if (this.setSelected == setName) return;
           this.setSelected = setName;
+          // console.log(this.setSelected);
           this.filterFolders = [];
-          var temSet = AV.Object.createWithoutData("Sets", this.selectedSetKey)
-          var query = new AV.Query("Folders");
-          query.equalTo("dependent", temSet);
-          query.find().then(folders => {
-              var temp = [];
-              folders.forEach(function(folder, i, a) {
-                  var obj = {};
-                  obj["id"] = folder.id;
-                  obj["name"] = folder.get("name");
-                  obj["amount"] = folder.get("amount");
-                  temp.push(obj);
-              });
-              this.filterFolders = temp;
-              this.groupSelected = this.filterFolders[0]["name"];
-              this.getPics();
-          });
+          for (let item of this.folderInfos) {
+            if (item.set == this.setSelected) {
+                this.filterFolders.push(item)
+            }
+          }
+          this.groupSelected = this.filterFolders[0].name;
       },
       lastGroup: function() {
           this.changeRepo(this.filterFolders[this.folderIndex - 1].name);
@@ -157,62 +181,26 @@ export default {
       nextGroup: function() {
           this.changeRepo(this.filterFolders[this.folderIndex + 1].name);
       },
-      leanInit: function() {
-          const appId = 'YWp5VQ5GqNBxSM5oW0GahRav-gzGzoHsz';
-          const appKey = 'mwKhOt9ERxNNmEUGlpJ89f78';
-          AV.init({appId, appKey});
-          this.leanGetSets();
-      },
-      leanGetSets: function() {
-          var query = new AV.Query("Sets");
-          query.find().then(sets => {
-              for (let item of sets) {
-                  var obj = {};
-                  obj["id"] = item.id;
-                  obj["name"] = item.get("name");
-                  obj["amount"] = item.get("amount");
-                  this.setInfos.push(obj);
-              }
-              this.changeSet(this.setInfos[0].name);
-              // console.log(this.setInfos);
-          })
-      },
-      getPics: function() {
-        var folderKey = "";
-        for (let item of this.filterFolders) {
-            if (item.name == this.groupSelected) {
-                folderKey = item.id;
-            }
-        }
-        var temFolder = AV.Object.createWithoutData("Folders", folderKey);
-        var query = new AV.Query("Pics");
-        query.equalTo("dependent", temFolder);
-        query.find().then(pics => {
-            var temp = [];
-            pics.forEach(function(pic, i, a) {
-                var obj = {};
-                obj["id"] = pic.id;
-                obj["name"] = pic.get("name");
-                obj["url"] = pic.get("url");
-                temp.push(obj);
-            });
-            this.selectedPics = temp;
-        })
+      nanobarInit: function() {
+          var options = {
+            id: 'app'
+          };
+          var nanobar = new Nanobar(options);
+          nanobar.go(70);
       }
   },
   computed: {
-    // replace this when use object as set iterator
-    selectedSetKey: function(){
-        if (this.setSelected == "") return "";
-        for (let item of this.setInfos) {
-            if (item.name == this.setSelected) {
-                return item.id;
+    selectedPicRepo: function() {
+        var temp = [];
+        for (let item of this.picInfos) {
+            if (item.folder == this.groupSelected) {
+                temp.push(item);
             }
         }
-        return "";
+        return temp;
     },
     lengthOfThisFolder: function() {
-        return this.selectedPics.length
+        return this.selectedPicRepo.length
     },
     lengthOfThisSet: function() {
         return this.filterFolders.length
@@ -220,14 +208,20 @@ export default {
     folderIndex: function() {
         var index = 0;
         for (let item of this.filterFolders) {
-            if (item.name == this.groupSelected) return index;
+            if (item.name == this.groupSelected) {
+                return index;
+            }
             index += 1;
         }
         return 0;
     }
   },
   mounted: function() {
-      this.leanInit();
+      // console.log("initial rendering is over");
+      this.getJsonData();
+      this.getGroupJsonData();
+      this.getSetJsonData();
+      //this.nanobarInit();
   }
 }
 </script>
